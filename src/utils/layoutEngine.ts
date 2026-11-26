@@ -1,0 +1,98 @@
+import type { BonchAppState, FontFamilyKey, PaperConfig } from '../types/bonch'
+
+export function getEffectivePaperSize(paper: PaperConfig): { widthMm: number; heightMm: number } {
+  const maxDim = Math.max(paper.widthMm, paper.heightMm)
+  const minDim = Math.min(paper.widthMm, paper.heightMm)
+  if (paper.orientation === 'landscape') {
+    return { widthMm: maxDim, heightMm: minDim }
+  }
+  return { widthMm: minDim, heightMm: maxDim }
+}
+
+export function getActiveLabelSize(state: BonchAppState): { widthMm: number; heightMm: number } {
+  if (state.activeSizePresetId === 'custom') {
+    return {
+      widthMm: Math.max(5, state.customWidthMm || 10),
+      heightMm: Math.max(5, state.customHeightMm || 13),
+    }
+  }
+  const preset = state.sizePresets.find((p) => p.id === state.activeSizePresetId)
+  if (preset) {
+    return { widthMm: preset.widthMm, heightMm: preset.heightMm }
+  }
+  return { widthMm: 10, heightMm: 13 }
+}
+
+export interface SheetGeometry {
+  paperW: number
+  paperH: number
+  padTop: number
+  padRight: number
+  padBottom: number
+  padLeft: number
+  usableW: number
+  usableH: number
+  cols: number
+  rows: number
+  perPage: number
+}
+
+export function computeSheetGeometry(paper: PaperConfig, labelW: number, labelH: number): SheetGeometry {
+  const { widthMm: paperW, heightMm: paperH } = getEffectivePaperSize(paper)
+  const ph = paper.preheat
+  const phExtra = ph.enabled ? ph.thicknessMm + ph.offsetGapMm : 0
+
+  const padTop =
+    paper.marginTopMm + (ph.enabled && (ph.position === 'top' || ph.position === 'both') ? phExtra : 0)
+  const padBottom =
+    paper.marginBottomMm + (ph.enabled && (ph.position === 'bottom' || ph.position === 'both') ? phExtra : 0)
+  const padLeft =
+    paper.marginLeftMm + (ph.enabled && (ph.position === 'left' || ph.position === 'left-right') ? phExtra : 0)
+  const padRight =
+    paper.marginRightMm + (ph.enabled && ph.position === 'left-right' ? phExtra : 0)
+
+  const usableW = Math.max(0, paperW - padLeft - padRight)
+  const usableH = Math.max(0, paperH - padTop - padBottom)
+
+  const cols = Math.max(1, Math.floor((usableW + paper.gapXMm + 0.01) / (labelW + paper.gapXMm)))
+  const rows = Math.max(1, Math.floor((usableH + paper.gapYMm + 0.01) / (labelH + paper.gapYMm)))
+
+  return {
+    paperW,
+    paperH,
+    padTop,
+    padRight,
+    padBottom,
+    padLeft,
+    usableW,
+    usableH,
+    cols,
+    rows,
+    perPage: cols * rows,
+  }
+}
+
+export function getFontFamilyCss(key: FontFamilyKey): string {
+  switch (key) {
+    case 'mono':
+      return 'var(--font-mono)'
+    case 'rounded':
+      return 'var(--font-rounded)'
+    case 'bold':
+      return '"Microsoft YaHei", "PingFang SC", "Heiti SC", sans-serif'
+    case 'sans':
+    default:
+      return 'var(--font-sans)'
+  }
+}
+
+export function applyDynamicPrintPageSize(widthMm: number, heightMm: number): void {
+  const styleId = 'bonch-dynamic-print-page'
+  let el = document.getElementById(styleId) as HTMLStyleElement | null
+  if (!el) {
+    el = document.createElement('style')
+    el.id = styleId
+    document.head.appendChild(el)
+  }
+  el.textContent = `@media print { @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; } }`
+}
