@@ -37,7 +37,12 @@ export interface SheetGeometry {
   perPage: number
 }
 
-export function computeSheetGeometry(paper: PaperConfig, labelW: number, labelH: number): SheetGeometry {
+export function computeSheetGeometry(
+  paper: PaperConfig,
+  labelW: number,
+  labelH: number,
+  borderWidthMm = 0.35,
+): SheetGeometry {
   const { widthMm: paperW, heightMm: paperH } = getEffectivePaperSize(paper)
   const ph = paper.preheat
   const phExtra = ph.enabled ? ph.thicknessMm + ph.offsetGapMm : 0
@@ -54,8 +59,18 @@ export function computeSheetGeometry(paper: PaperConfig, labelW: number, labelH:
   const usableW = Math.max(0, paperW - padLeft - padRight)
   const usableH = Math.max(0, paperH - padTop - padBottom)
 
-  const cols = Math.max(1, Math.floor((usableW + paper.gapXMm + 0.01) / (labelW + paper.gapXMm)))
-  const rows = Math.max(1, Math.floor((usableH + paper.gapYMm + 0.01) / (labelH + paper.gapYMm)))
+  let cols = 1
+  let rows = 1
+
+  if (paper.connectedGrid) {
+    const stepX = Math.max(1, labelW - borderWidthMm)
+    const stepY = Math.max(1, labelH - borderWidthMm)
+    cols = Math.max(1, Math.floor((usableW - borderWidthMm + 0.05) / stepX))
+    rows = Math.max(1, Math.floor((usableH - borderWidthMm + 0.05) / stepY))
+  } else {
+    cols = Math.max(1, Math.floor((usableW + paper.gapXMm + 0.05) / (labelW + paper.gapXMm)))
+    rows = Math.max(1, Math.floor((usableH + paper.gapYMm + 0.05) / (labelH + paper.gapYMm)))
+  }
 
   return {
     paperW,
@@ -86,7 +101,9 @@ export function getFontFamilyCss(key: FontFamilyKey): string {
   }
 }
 
-export function applyDynamicPrintPageSize(widthMm: number, heightMm: number): void {
+export function applyDynamicPrintPageSize(widthMm: number, heightMm: number, rotate90 = false): void {
+  const outW = rotate90 ? heightMm : widthMm
+  const outH = rotate90 ? widthMm : heightMm
   const styleId = 'bonch-dynamic-print-page'
   let el = document.getElementById(styleId) as HTMLStyleElement | null
   if (!el) {
@@ -94,5 +111,5 @@ export function applyDynamicPrintPageSize(widthMm: number, heightMm: number): vo
     el.id = styleId
     document.head.appendChild(el)
   }
-  el.textContent = `@media print { @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; } }`
+  el.textContent = `@media print { @page { size: ${outW}mm ${outH}mm; margin: 0mm !important; } }`
 }

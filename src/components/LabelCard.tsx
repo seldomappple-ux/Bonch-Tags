@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { Copy, Trash2 } from 'lucide-react'
 import type { IconAsset, LabelStyleConfig, SheetLabelInstance } from '../types/bonch'
 import { getFontFamilyCss } from '../utils/layoutEngine'
@@ -9,6 +9,7 @@ interface LabelCardProps {
   widthMm: number
   heightMm: number
   styleConfig: LabelStyleConfig
+  connectedGrid?: boolean
   selected?: boolean
   forPrint?: boolean
   onSelect?: () => void
@@ -23,6 +24,7 @@ export const LabelCard: React.FC<LabelCardProps> = ({
   widthMm,
   heightMm,
   styleConfig,
+  connectedGrid = false,
   selected = false,
   forPrint = false,
   onSelect,
@@ -30,22 +32,35 @@ export const LabelCard: React.FC<LabelCardProps> = ({
   onDuplicate,
   onDelete,
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [editing, setEditing] = useState(false)
+  const [isTextOverflow, setIsTextOverflow] = useState(false)
+  const textBoxRef = useRef<HTMLDivElement>(null)
   const fontSizePt = item.fontSizeOverridePt ?? styleConfig.fontSizePt
 
-  useEffect(() => {
-    if (selected && textareaRef.current && document.activeElement === textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-  }, [item.text, selected])
+  // Detect exact text overflow on screen so screen preview matches print 100%
+  useLayoutEffect(() => {
+    if (forPrint || !textBoxRef.current) return
+    const el = textBoxRef.current
+    setIsTextOverflow(el.scrollHeight > el.clientHeight + 0.8 || el.scrollWidth > el.clientWidth + 0.8)
+  }, [item.text, fontSizePt, widthMm, heightMm, styleConfig.splitRatio, styleConfig.fontFamily, forPrint])
 
   const topHeightPct = Math.round(styleConfig.splitRatio * 100)
   const bottomHeightPct = 100 - topHeightPct
+  const effectiveRadiusMm = connectedGrid ? 0 : styleConfig.borderRadiusMm
 
   const dividerCss =
     styleConfig.dividerStyle === 'none'
       ? 'none'
       : `${styleConfig.dividerWidthMm}mm ${styleConfig.dividerStyle} #000000`
+
+  const fontWeightValue =
+    styleConfig.fontFamily === 'bold'
+      ? 700
+      : styleConfig.fontWeight === 'bold'
+        ? 700
+        : styleConfig.fontWeight === 'medium'
+          ? 500
+          : 400
 
   return (
     <div
@@ -54,40 +69,63 @@ export const LabelCard: React.FC<LabelCardProps> = ({
         e.stopPropagation()
         onSelect?.()
       }}
-      className={`group relative select-none bg-white text-black transition-shadow ${
-        !forPrint ? 'cursor-pointer' : ''
-      } ${!forPrint && selected ? 'ring-[0.45mm] ring-zinc-900 ring-offset-[0.35mm]' : ''}`}
+      onDoubleClick={(e) => {
+        if (forPrint) return
+        e.stopPropagation()
+        onSelect?.()
+        setEditing(true)
+      }}
+      className={`group relative select-none bg-white text-black ${!forPrint ? 'cursor-pointer' : ''}`}
       style={{
         width: `${widthMm}mm`,
         height: `${heightMm}mm`,
         border: `${styleConfig.borderWidthMm}mm solid #000000`,
-        borderRadius: `${styleConfig.borderRadiusMm}mm`,
+        borderRadius: `${effectiveRadiusMm}mm`,
+        marginLeft: connectedGrid ? `-${styleConfig.borderWidthMm}mm` : undefined,
+        marginTop: connectedGrid ? `-${styleConfig.borderWidthMm}mm` : undefined,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
         flexShrink: 0,
+        zIndex: !forPrint && selected ? 10 : 1,
+        outline: !forPrint && selected ? '0.45mm solid #2563eb' : 'none',
+        outlineOffset: '-0.2mm',
       }}
     >
       {/* Top Icon Cell */}
       <div
         style={{
+          position: 'relative',
           height: `${topHeightPct}%`,
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: styleConfig.invertedTop ? '#000000' : '#ffffff',
           color: styleConfig.invertedTop ? '#ffffff' : '#000000',
           borderBottom: dividerCss,
-          padding: '0.4mm',
+          padding: '0.35mm',
           boxSizing: 'border-box',
           overflow: 'hidden',
         }}
       >
+        {/* Use foreground SVG rect for inverted background so Chrome print never strips it */}
+        {styleConfig.invertedTop && (
+          <svg
+            aria-hidden="true"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0 }}
+            preserveAspectRatio="none"
+            viewBox="0 0 10 10"
+          >
+            <rect width="10" height="10" fill="#000000" />
+          </svg>
+        )}
+
         {icon ? (
           <div
             style={{
+              position: 'relative',
+              zIndex: 1,
               width: `${Math.round(styleConfig.iconScale * 100)}%`,
               height: `${Math.round(styleConfig.iconScale * 100)}%`,
               display: 'flex',
@@ -97,84 +135,78 @@ export const LabelCard: React.FC<LabelCardProps> = ({
             dangerouslySetInnerHTML={{ __html: icon.svgContent }}
           />
         ) : (
-          <span style={{ fontSize: '4pt', opacity: 0.4 }}>无图标</span>
+          <span style={{ position: 'relative', zIndex: 1, fontSize: '4pt', opacity: 0.4 }}>无图标</span>
         )}
       </div>
 
-      {/* Bottom Text Cell */}
+      {/* Bottom Text Cell — IDENTICAL DOM & CSS on screen and in print! */}
       <div
+        ref={textBoxRef}
         style={{
+          position: 'relative',
           height: `${bottomHeightPct}%`,
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0.35mm 0.5mm',
+          padding: '0.3mm 0.45mm',
           boxSizing: 'border-box',
           overflow: 'hidden',
           backgroundColor: '#ffffff',
           color: '#000000',
         }}
       >
-        {forPrint ? (
-          <div
-            style={{
-              width: '100%',
-              textAlign: 'center',
-              fontFamily: getFontFamilyCss(styleConfig.fontFamily),
-              fontSize: `${fontSizePt}pt`,
-              fontWeight:
-                styleConfig.fontFamily === 'bold'
-                  ? 700
-                  : styleConfig.fontWeight === 'bold'
-                    ? 700
-                    : styleConfig.fontWeight === 'medium'
-                      ? 500
-                      : 400,
-              lineHeight: 1.15,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              overflow: 'hidden',
-            }}
-          >
-            {item.text}
-          </div>
-        ) : (
+        <div
+          style={{
+            width: '100%',
+            textAlign: 'center',
+            fontFamily: getFontFamilyCss(styleConfig.fontFamily),
+            fontSize: `${fontSizePt}pt`,
+            fontWeight: fontWeightValue,
+            lineHeight: 1.15,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {item.text || (!forPrint ? <span style={{ color: '#d4d4d8' }}>双击改字</span> : '')}
+        </div>
+
+        {/* Inline edit overlay only when actively double-clicked */}
+        {!forPrint && editing && (
           <textarea
-            ref={textareaRef}
+            autoFocus
             value={item.text}
             onChange={(e) => onTextChange?.(e.target.value)}
-            onClick={(e) => {
-              e.stopPropagation()
-              onSelect?.()
+            onBlur={() => setEditing(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false)
             }}
+            onClick={(e) => e.stopPropagation()}
             spellCheck={false}
-            rows={item.text.includes('\n') ? 2 : 1}
-            placeholder="输入文字"
-            className="w-full resize-none border-none bg-transparent p-0 text-center text-black outline-none placeholder:text-zinc-300"
+            className="no-print absolute inset-0 h-full w-full resize-none border-none bg-blue-50/95 p-[0.3mm] text-center text-black outline-none"
             style={{
               fontFamily: getFontFamilyCss(styleConfig.fontFamily),
               fontSize: `${fontSizePt}pt`,
-              fontWeight:
-                styleConfig.fontFamily === 'bold'
-                  ? 700
-                  : styleConfig.fontWeight === 'bold'
-                    ? 700
-                    : styleConfig.fontWeight === 'medium'
-                      ? 500
-                      : 400,
+              fontWeight: fontWeightValue,
               lineHeight: 1.15,
-              maxHeight: '100%',
-              overflow: 'hidden',
             }}
+          />
+        )}
+
+        {/* Overflow warning dot (screen only) */}
+        {!forPrint && isTextOverflow && !editing && (
+          <div
+            title="文字超出格子范围，打印会被裁切，请调小字号或精简文字"
+            className="no-print absolute right-[0.3mm] bottom-[0.3mm] rounded-full bg-red-600"
+            style={{ width: '1.3mm', height: '1.3mm' }}
           />
         )}
       </div>
 
-      {/* Floating quick actions (screen only, hidden in print) */}
-      {!forPrint && (
+      {/* Floating quick actions (screen only) */}
+      {!forPrint && !editing && (
         <div
-          className={`no-print absolute top-0 right-0 flex gap-[0.3mm] rounded-bl bg-zinc-900/90 p-[0.35mm] text-white transition-opacity ${
+          className={`no-print absolute top-0 right-0 z-20 flex gap-[0.25mm] rounded-bl bg-zinc-900/90 p-[0.3mm] text-white transition-opacity ${
             selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
         >
@@ -185,9 +217,9 @@ export const LabelCard: React.FC<LabelCardProps> = ({
               e.stopPropagation()
               onDuplicate?.()
             }}
-            className="flex items-center justify-center rounded p-[0.25mm] hover:bg-zinc-700"
+            className="flex items-center justify-center rounded p-[0.2mm] hover:bg-zinc-700"
           >
-            <Copy style={{ width: '1.8mm', height: '1.8mm' }} />
+            <Copy style={{ width: '1.6mm', height: '1.6mm' }} />
           </button>
           <button
             type="button"
@@ -196,9 +228,9 @@ export const LabelCard: React.FC<LabelCardProps> = ({
               e.stopPropagation()
               onDelete?.()
             }}
-            className="flex items-center justify-center rounded p-[0.25mm] hover:bg-red-600"
+            className="flex items-center justify-center rounded p-[0.2mm] hover:bg-red-600"
           >
-            <Trash2 style={{ width: '1.8mm', height: '1.8mm' }} />
+            <Trash2 style={{ width: '1.6mm', height: '1.6mm' }} />
           </button>
         </div>
       )}

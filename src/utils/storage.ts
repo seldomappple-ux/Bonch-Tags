@@ -2,10 +2,11 @@ import { BUILT_IN_ICONS, DEFAULT_PARTS, DEFAULT_SIZE_PRESETS } from '../data/bui
 import type { BonchAppState } from '../types/bonch'
 
 const STORAGE_KEY = 'bonch-tags-state-v1'
+const CURRENT_DATA_VERSION = 2
 
 export function createInitialState(): BonchAppState {
   return {
-    version: 1,
+    version: CURRENT_DATA_VERSION,
     icons: BUILT_IN_ICONS,
     parts: DEFAULT_PARTS,
     sizePresets: DEFAULT_SIZE_PRESETS,
@@ -16,7 +17,7 @@ export function createInitialState(): BonchAppState {
       borderWidthMm: 0.35,
       dividerWidthMm: 0.25,
       dividerStyle: 'solid',
-      borderRadiusMm: 0.6,
+      borderRadiusMm: 0,
       splitRatio: 0.56,
       iconScale: 0.78,
       fontFamily: 'sans',
@@ -29,12 +30,14 @@ export function createInitialState(): BonchAppState {
       widthMm: 60,
       heightMm: 40,
       orientation: 'landscape',
+      printRotate90: false,
+      connectedGrid: true,
       marginTopMm: 2.5,
       marginRightMm: 2.5,
       marginBottomMm: 2.5,
       marginLeftMm: 2.5,
-      gapXMm: 0.5,
-      gapYMm: 0.5,
+      gapXMm: 0,
+      gapYMm: 0,
       preheat: {
         enabled: true,
         position: 'top',
@@ -47,9 +50,9 @@ export function createInitialState(): BonchAppState {
       { id: 'init-1', partId: 'part-1', iconId: 'icon-screw-hex', text: 'M2' },
       { id: 'init-2', partId: 'part-1', iconId: 'icon-screw-hex', text: 'M2.5' },
       { id: 'init-3', partId: 'part-1', iconId: 'icon-screw-hex', text: 'M3' },
-      { id: 'init-4', partId: 'part-1', iconId: 'icon-screw-hex', text: 'M3.5' },
-      { id: 'init-5', partId: 'part-3', iconId: 'icon-chip', text: 'CH224K' },
-      { id: 'init-6', partId: 'part-6', iconId: 'icon-heatsink', text: '10×10' },
+      { id: 'init-4', partId: 'part-2', iconId: 'icon-nut', text: 'M3' },
+      { id: 'init-5', partId: 'part-4', iconId: 'icon-chip', text: 'CH224K' },
+      { id: 'init-6', partId: 'part-5', iconId: 'icon-heatsink', text: '10×10' },
     ],
     history: [],
   }
@@ -62,15 +65,20 @@ export function loadState(): BonchAppState {
     const parsed = JSON.parse(raw) as Partial<BonchAppState>
     const base = createInitialState()
 
-    // Ensure built-in icons are always present if user hasn't deleted them
-    const icons = Array.isArray(parsed.icons) && parsed.icons.length > 0 ? parsed.icons : base.icons
-    const parts = Array.isArray(parsed.parts) ? parsed.parts : base.parts
+    // Always refresh built-in icons to the latest bold silhouette SVGs while keeping user-imported icons
+    const userIcons = Array.isArray(parsed.icons)
+      ? parsed.icons.filter((ic) => !ic.isBuiltIn && !BUILT_IN_ICONS.some((b) => b.id === ic.id))
+      : []
+    const icons = [...userIcons, ...BUILT_IN_ICONS]
+
+    const parts = Array.isArray(parsed.parts) && parsed.parts.length > 0 ? parsed.parts : base.parts
     const sizePresets =
       Array.isArray(parsed.sizePresets) && parsed.sizePresets.length > 0 ? parsed.sizePresets : base.sizePresets
 
     return {
       ...base,
       ...parsed,
+      version: CURRENT_DATA_VERSION,
       icons,
       parts,
       sizePresets,
@@ -92,7 +100,7 @@ export function saveState(state: BonchAppState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
-    // Ignore quota errors silently
+    // Ignore quota errors
   }
 }
 

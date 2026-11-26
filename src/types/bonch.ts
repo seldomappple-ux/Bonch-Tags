@@ -38,7 +38,7 @@ export interface LabelStyleConfig {
   dividerStyle: DividerStyle
   borderRadiusMm: number
   splitRatio: number // 0.35 - 0.70, proportion of top icon box
-  iconScale: number // 0.5 - 0.95
+  iconScale: number // 0.40 - 1.00, icon size inside top box
   fontFamily: FontFamilyKey
   fontSizePt: number
   fontWeight: 'normal' | 'medium' | 'bold'
@@ -58,6 +58,8 @@ export interface PaperConfig {
   widthMm: number
   heightMm: number
   orientation: 'landscape' | 'portrait'
+  printRotate90: boolean
+  connectedGrid: boolean // Seamless shared-border grid (no white gaps)
   marginTopMm: number
   marginRightMm: number
   marginBottomMm: number

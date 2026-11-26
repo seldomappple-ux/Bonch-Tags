@@ -1,11 +1,11 @@
-export const AI_SVG_SPEC_PROMPT = `请帮我画一个用于 10×13mm 小标签黑白打印的极简矢量 SVG 图标，主题是：【在这里填入零件名称，例如：Type-C母座 / M3沉头螺丝 / 电容】。
+export const AI_SVG_SPEC_PROMPT = `请帮我画一个用于 10×13mm 小标签黑白打印的极简矢量 SVG 图标，主题是：【在这里填入零件名称，例如：Type-C母座 / 六角螺母 / 沉头螺丝】。
 
 必须严格遵守以下规范：
-1. 画布尺寸：viewBox="0 0 64 64"，不要写死过大宽高，无任何背景矩形（透明底）。
-2. 颜色风格：纯黑白线条风，使用 stroke="currentColor"、fill="none"（少量实心点可用 fill="currentColor"），不要使用灰色、渐变或阴影。
-3. 线条粗细：统一 stroke-width="3"，stroke-linecap="round"，stroke-linejoin="round"。
-4. 视觉比例：图形主体居中，四周留出约 8px 安全边距，结构简洁明快，缩小到 8mm 打印时依然清晰不糊。
-5. 只输出纯 <svg>...</svg> 代码，不要附带文字说明。`
+1. 画布尺寸：viewBox="0 0 64 64"，透明底，不要画任何白色或黑色背景矩形。
+2. 视觉风格：【实心黑白剪影 / 粗黑块风格】，以大块面 fill="currentColor" 为主，内部细节用镂空留白（evenodd）表现，不要用细线条或复杂细节。
+3. 颜色限制：只使用纯黑（currentColor），严禁灰色、渐变、阴影。
+4. 比例留白：图形主体饱满居中，四周留出约 6px 边距，缩小到 6~8mm 打印时依然一眼能认出。
+5. 只输出纯 <svg>...</svg> 代码，不要附带任何解释文字。`
 
 export function normalizeSvg(rawInput: string): { ok: true; svg: string } | { ok: false; error: string } {
   const trimmed = rawInput
@@ -31,7 +31,6 @@ export function normalizeSvg(rawInput: string): { ok: true; svg: string } | { ok
       return { ok: false, error: '未找到 SVG 根节点。' }
     }
 
-    // Security sanitization: remove scripts and inline event handlers
     svgEl.querySelectorAll('script, foreignObject').forEach((el) => el.remove())
     svgEl.querySelectorAll('*').forEach((el) => {
       for (const attr of Array.from(el.attributes)) {
@@ -39,7 +38,6 @@ export function normalizeSvg(rawInput: string): { ok: true; svg: string } | { ok
           el.removeAttribute(attr.name)
         }
       }
-      // Remove full-canvas white background rectangles if AI generated one
       if (el.tagName.toLowerCase() === 'rect') {
         const fill = (el.getAttribute('fill') || '').toLowerCase()
         if (fill === '#fff' || fill === '#ffffff' || fill === 'white') {
@@ -51,7 +49,6 @@ export function normalizeSvg(rawInput: string): { ok: true; svg: string } | { ok
           }
         }
       }
-      // Normalize pure black strokes/fills to currentColor so inverted mode works cleanly
       const stroke = (el.getAttribute('stroke') || '').toLowerCase()
       if (stroke === '#000' || stroke === '#000000' || stroke === 'black') {
         el.setAttribute('stroke', 'currentColor')

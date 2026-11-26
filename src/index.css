@@ -19,7 +19,6 @@
   }
 }
 
-/* Custom subtle scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -35,12 +34,19 @@
   background: #a1a1aa;
 }
 
-/* Exact millimeter print isolation */
 @media print {
+  @page {
+    margin: 0 !important;
+  }
+
   html,
-  body {
+  body,
+  #root {
     margin: 0 !important;
     padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
     background: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -52,12 +58,13 @@
 
   .print-only-sheet {
     display: block !important;
-    position: fixed !important;
-    inset: 0 !important;
+    position: relative !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

@@ -39,7 +39,6 @@ export function App() {
     }, 2400)
   }
 
-  // Persist locally on every state update
   useEffect(() => {
     saveState(state)
   }, [state])
@@ -52,16 +51,20 @@ export function App() {
 
   const activeLabelSize = useMemo(() => getActiveLabelSize(state), [state])
   const geo = useMemo(
-    () => computeSheetGeometry(state.paper, activeLabelSize.widthMm, activeLabelSize.heightMm),
-    [state.paper, activeLabelSize],
+    () =>
+      computeSheetGeometry(
+        state.paper,
+        activeLabelSize.widthMm,
+        activeLabelSize.heightMm,
+        state.style.borderWidthMm,
+      ),
+    [state.paper, activeLabelSize, state.style.borderWidthMm],
   )
 
-  // Keep dynamic @page CSS synced with current paper size
   useEffect(() => {
-    applyDynamicPrintPageSize(geo.paperW, geo.paperH)
-  }, [geo.paperW, geo.paperH])
+    applyDynamicPrintPageSize(geo.paperW, geo.paperH, state.paper.printRotate90)
+  }, [geo.paperW, geo.paperH, state.paper.printRotate90])
 
-  // Auto-adjust sensible zoom when paper is very large (e.g. A4) vs small (60x40)
   useEffect(() => {
     if (geo.paperW >= 180) {
       setZoom(0.95)
@@ -92,6 +95,12 @@ export function App() {
     const part = state.parts.find((p) => p.id === partId)
     if (!part) return
     addLabelToSheet(part.iconId, part.defaultText, part.id)
+  }
+
+  const handleDropIcon = (iconId: string) => {
+    const icon = iconsMap.get(iconId)
+    if (!icon) return
+    addLabelToSheet(icon.id, icon.name)
   }
 
   const updateItem = (id: string, patch: Partial<SheetLabelInstance>) => {
@@ -169,8 +178,15 @@ export function App() {
       showToast('画布为空，请先从左侧添加标签')
       return
     }
-    applyDynamicPrintPageSize(geo.paperW, geo.paperH)
+    applyDynamicPrintPageSize(geo.paperW, geo.paperH, state.paper.printRotate90)
     saveCurrentToHistory()
+    const prevTitle = document.title
+    document.title = ' '
+    const restoreTitle = () => {
+      document.title = prevTitle
+      window.removeEventListener('afterprint', restoreTitle)
+    }
+    window.addEventListener('afterprint', restoreTitle)
     setTimeout(() => {
       window.print()
     }, 60)
@@ -206,14 +222,11 @@ export function App() {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-white">
               <Tag className="h-4 w-4" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-tight text-zinc-900">Bonch Tags</h1>
-            </div>
+            <h1 className="text-sm font-bold tracking-tight text-zinc-900">Bonch Tags</h1>
           </div>
 
           <div className="h-4 w-px bg-zinc-200" />
 
-          {/* Live Sheet Capacity Pill */}
           <div
             className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
               isOverflow
@@ -264,7 +277,6 @@ export function App() {
               showToast('已导出本地 JSON 备份')
             }}
             className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-            title="导出全部图标、零件、历史单为 JSON 备份"
           >
             <Download className="h-3.5 w-3.5" />
             备份
@@ -274,7 +286,6 @@ export function App() {
             type="button"
             onClick={() => backupInputRef.current?.click()}
             className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-            title="从 JSON 备份恢复数据"
           >
             <Upload className="h-3.5 w-3.5" />
             恢复
@@ -300,7 +311,6 @@ export function App() {
 
       {/* Main 3-Column Workspace */}
       <div className="no-print flex min-h-0 flex-1">
-        {/* Left: Parts & Icons Library */}
         <LibrarySidebar
           icons={state.icons}
           parts={state.parts}
@@ -330,27 +340,34 @@ export function App() {
           }}
         >
           <div className="flex flex-1 items-center justify-center overflow-auto p-10">
-            <div
-              style={{
-                transform: `scale(${zoom})`,
-                transformOrigin: 'center center',
-                transition: 'transform 120ms ease-out',
-              }}
-            >
-              <PrintSheet
-                paper={state.paper}
-                labelW={activeLabelSize.widthMm}
-                labelH={activeLabelSize.heightMm}
-                styleConfig={state.style}
-                items={state.sheetItems}
-                iconsMap={iconsMap}
-                selectedItemId={selectedItemId}
-                onSelectItem={setSelectedItemId}
-                onUpdateItemText={(id, text) => updateItem(id, { text })}
-                onDuplicateItem={duplicateItem}
-                onDeleteItem={deleteItem}
-                onDropPart={handleDropPart}
-              />
+            <div className="flex flex-col items-center gap-2">
+              <div className="font-mono text-[11px] text-zinc-500">
+                纸张预览：{geo.paperW} × {geo.paperH} mm（{state.paper.orientation === 'landscape' ? '横向' : '纵向'}
+                {state.paper.printRotate90 ? ' · 打印旋转90°' : ''}）
+              </div>
+              <div
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top center',
+                  transition: 'transform 120ms ease-out',
+                }}
+              >
+                <PrintSheet
+                  paper={state.paper}
+                  labelW={activeLabelSize.widthMm}
+                  labelH={activeLabelSize.heightMm}
+                  styleConfig={state.style}
+                  items={state.sheetItems}
+                  iconsMap={iconsMap}
+                  selectedItemId={selectedItemId}
+                  onSelectItem={setSelectedItemId}
+                  onUpdateItemText={(id, text) => updateItem(id, { text })}
+                  onDuplicateItem={duplicateItem}
+                  onDeleteItem={deleteItem}
+                  onDropPart={handleDropPart}
+                  onDropIcon={handleDropIcon}
+                />
+              </div>
             </div>
           </div>
 
@@ -379,7 +396,7 @@ export function App() {
 
               <div className="h-3.5 w-px bg-zinc-200" />
 
-              <span className="text-[11px] text-zinc-500">直接点标签文字即可改参数</span>
+              <span className="text-[11px] text-zinc-500">双击标签直接改字 · 红点表示文字溢出</span>
 
               <div className="h-3.5 w-px bg-zinc-200" />
 
@@ -398,7 +415,6 @@ export function App() {
           </div>
         </main>
 
-        {/* Right: Style, Size & Printer Inspector */}
         <InspectorPanel
           state={state}
           selectedItem={selectedItem}
@@ -452,7 +468,6 @@ export function App() {
         forPrint
       />
 
-      {/* Modals & Drawers */}
       <IconImporterModal
         open={iconModalOpen}
         onClose={() => setIconModalOpen(false)}
@@ -491,7 +506,6 @@ export function App() {
         }
       />
 
-      {/* Subtle Toast */}
       {toast && (
         <div className="no-print fixed bottom-16 left-1/2 z-50 -translate-x-1/2 rounded-full bg-zinc-900 px-4 py-1.5 text-xs font-medium text-white shadow-lg">
           {toast}
