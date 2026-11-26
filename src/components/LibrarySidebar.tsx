@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
 import type { IconAsset, PartItem } from '../types/bonch'
 
@@ -32,11 +32,20 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
   const [newPartCategory, setNewPartCategory] = useState('紧固件')
   const [newPartText, setNewPartText] = useState('')
   const [newPartIconId, setNewPartIconId] = useState(icons[0]?.id || '')
+  const catTabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   const partCategories = useMemo(() => {
     const cats = Array.from(new Set(parts.map((p) => p.category || '未分类')))
     return ['全部', ...cats]
   }, [parts])
+
+  useLayoutEffect(() => {
+    const el = catTabRefs.current[activeCategory]
+    if (el) {
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
+    }
+  }, [activeCategory, partCategories, tab])
 
   const filteredParts = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -155,25 +164,36 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
               </button>
             </div>
 
-            {/* Clean single-row underline category strip */}
-            <div className="no-scrollbar -mx-3 -mb-3 flex items-center gap-3 overflow-x-auto border-t border-zinc-100 px-3 pt-1.5">
+            {/* Clean single-row underline category strip with smooth sliding bar */}
+            <div className="no-scrollbar relative -mx-3 -mb-3 flex items-center gap-3 overflow-x-auto border-t border-zinc-100 px-3 pt-1.5">
               {partCategories.map((cat) => {
                 const active = activeCategory === cat
                 return (
                   <button
                     key={cat}
+                    ref={(el) => {
+                      catTabRefs.current[cat] = el
+                    }}
                     type="button"
                     onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 border-b-2 pb-1.5 text-[11px] transition ${
+                    className={`shrink-0 pb-2 text-[11px] transition-colors duration-200 ${
                       active
-                        ? 'border-zinc-900 font-semibold text-zinc-900'
-                        : 'border-transparent font-normal text-zinc-500 hover:text-zinc-800'
+                        ? 'font-semibold text-zinc-900'
+                        : 'font-normal text-zinc-500 hover:text-zinc-800'
                     }`}
                   >
                     {cat}
                   </button>
                 )
               })}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 left-0 h-[2px] rounded-full bg-zinc-900 transition-all duration-200 ease-out"
+                style={{
+                  transform: `translateX(${indicator.left}px)`,
+                  width: `${indicator.width}px`,
+                }}
+              />
             </div>
           </>
         ) : (

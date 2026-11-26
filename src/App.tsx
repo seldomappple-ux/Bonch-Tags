@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Clock,
   Download,
+  FileDown,
   Printer,
   Save,
   Tag,
@@ -21,6 +22,7 @@ import {
   computeSheetGeometry,
   getActiveLabelSize,
 } from './utils/layoutEngine'
+import { downloadPdfBlob, generateExactSheetPdf, printPdfBlob } from './utils/pdfPrintEngine'
 import { exportBackup, loadState, parseBackupFile, saveState } from './utils/storage'
 
 export function App() {
@@ -173,23 +175,47 @@ export function App() {
     showToast('已保存到历史打印单')
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (state.sheetItems.length === 0) {
       showToast('画布为空，请先从左侧添加标签')
       return
     }
-    applyDynamicPrintPageSize(geo.paperW, geo.paperH, state.paper.printRotate90)
     saveCurrentToHistory()
-    const prevTitle = document.title
-    document.title = ' '
-    const restoreTitle = () => {
-      document.title = prevTitle
-      window.removeEventListener('afterprint', restoreTitle)
-    }
-    window.addEventListener('afterprint', restoreTitle)
-    setTimeout(() => {
+    try {
+      const pdfBlob = await generateExactSheetPdf({
+        paper: state.paper,
+        labelW: activeLabelSize.widthMm,
+        labelH: activeLabelSize.heightMm,
+        styleConfig: state.style,
+        items: state.sheetItems,
+        iconsMap,
+      })
+      printPdfBlob(pdfBlob)
+    } catch {
+      showToast('生成打印 PDF 失败，回退至浏览器打印')
       window.print()
-    }, 60)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (state.sheetItems.length === 0) {
+      showToast('画布为空，请先从左侧添加标签')
+      return
+    }
+    try {
+      const pdfBlob = await generateExactSheetPdf({
+        paper: state.paper,
+        labelW: activeLabelSize.widthMm,
+        labelH: activeLabelSize.heightMm,
+        styleConfig: state.style,
+        items: state.sheetItems,
+        iconsMap,
+      })
+      downloadPdfBlob(pdfBlob, `bonch-tags-${geo.paperW}x${geo.paperH}mm.pdf`)
+      showToast('已导出 1:1 精准 PDF')
+    } catch {
+      showToast('导出 PDF 失败')
+    }
   }
 
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,6 +323,16 @@ export function App() {
             onChange={handleImportBackup}
             className="hidden"
           />
+
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            title="导出 1:1 精确毫米 PDF（无页眉页脚）"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            PDF
+          </button>
 
           <button
             type="button"
