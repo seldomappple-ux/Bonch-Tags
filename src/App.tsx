@@ -17,6 +17,7 @@ import { InspectorPanel } from './components/InspectorPanel'
 import { LibrarySidebar } from './components/LibrarySidebar'
 import { PrintSheet } from './components/PrintSheet'
 import type { BonchAppState, IconAsset, PartItem, SavedPrintSheet, SheetLabelInstance } from './types/bonch'
+import { applyAiPayloadToState, extractAiPayloadFromHash } from './utils/aiPayload'
 import {
   applyDynamicPrintPageSize,
   computeSheetGeometry,
@@ -44,6 +45,28 @@ export function App() {
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  // Support AI Skill URL-hash bridge (#import=<base64url-json>)
+  useEffect(() => {
+    const consumeHash = () => {
+      const payload = extractAiPayloadFromHash(window.location.hash)
+      if (!payload) return
+      let summary = ''
+      setState((prev) => {
+        const res = applyAiPayloadToState(prev, payload)
+        summary = `AI 方案已载入：${res.itemCount} 个标签${res.addedIcons > 0 ? `，新增 ${res.addedIcons} 个图标` : ''}`
+        return res.nextState
+      })
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      setSelectedItemId(null)
+      setTimeout(() => {
+        if (summary) showToast(summary)
+      }, 50)
+    }
+    consumeHash()
+    window.addEventListener('hashchange', consumeHash)
+    return () => window.removeEventListener('hashchange', consumeHash)
+  }, [])
 
   const iconsMap = useMemo(() => {
     const map = new Map<string, IconAsset>()
@@ -224,6 +247,23 @@ export function App() {
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
+      // Also support importing AI Skill .json sheet payloads via the Restore/Import button
+      try {
+        const rawObj = JSON.parse(reader.result)
+        if (rawObj && Array.isArray(rawObj.items) && !Array.isArray(rawObj.parts)) {
+          let msg = ''
+          setState((prev) => {
+            const applied = applyAiPayloadToState(prev, rawObj)
+            msg = `已导入 AI 标签单（${applied.itemCount} 个标签）`
+            return applied.nextState
+          })
+          setSelectedItemId(null)
+          showToast(msg || '已导入 AI 标签单')
+          return
+        }
+      } catch {
+        // Fall through to full backup parser
+      }
       const res = parseBackupFile(reader.result)
       if (!res.ok) {
         showToast(res.error)
