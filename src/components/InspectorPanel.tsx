@@ -688,6 +688,33 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 )}
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-0.5 block text-[10px] text-zinc-500">打印偏移 X (mm)</label>
+                  <input
+                    type="number"
+                    min={-15}
+                    max={15}
+                    step={0.5}
+                    value={paper.offsetXMm ?? 0}
+                    onChange={(e) => onChangePaper({ offsetXMm: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-md border border-zinc-200 px-2 py-1 text-xs outline-none focus:border-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] text-zinc-500">打印偏移 Y (mm)</label>
+                  <input
+                    type="number"
+                    min={-15}
+                    max={15}
+                    step={0.5}
+                    value={paper.offsetYMm ?? 0}
+                    onChange={(e) => onChangePaper({ offsetYMm: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-md border border-zinc-200 px-2 py-1 text-xs outline-none focus:border-zinc-900"
+                  />
+                </div>
+              </div>
+
               <label className="flex cursor-pointer items-center justify-between rounded-md border border-zinc-200 px-2.5 py-1.5 text-[11px] text-zinc-600">
                 <span className="flex items-center gap-1.5">
                   <RotateCw className="h-3 w-3" />

@@ -31,6 +31,8 @@ export function createInitialState(): BonchAppState {
       heightMm: 40,
       orientation: 'landscape',
       printRotate90: false,
+      offsetXMm: 0,
+      offsetYMm: 0,
       connectedGrid: true,
       marginTopMm: 2.5,
       marginRightMm: 2.5,

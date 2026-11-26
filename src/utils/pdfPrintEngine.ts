@@ -29,8 +29,9 @@ function wrapTextLines(
   text: string,
   maxWidth: number,
 ): string[] {
+  const cleaned = text.replace(/\n+$/, '')
   const result: string[] = []
-  const paragraphs = text.split('\n')
+  const paragraphs = cleaned.split('\n')
   for (const para of paragraphs) {
     if (!para) {
       result.push('')
@@ -168,6 +169,12 @@ export async function generateExactSheetPdf(params: {
   // Pure white sheet background
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // Apply optional printer calibration X/Y offset (0,0 by default for standard A4 printers)
+  const oxPx = (paper.offsetXMm || 0) * PX_PER_MM
+  const oyPx = (paper.offsetYMm || 0) * PX_PER_MM
+  ctx.save()
+  ctx.translate(oxPx, oyPx)
 
   // Draw Pre-heat bars
   const ph = paper.preheat
@@ -335,6 +342,8 @@ export async function generateExactSheetPdf(params: {
     ctx.stroke()
     ctx.restore()
   })
+
+  ctx.restore() // end printer calibration offset
 
   // Optional 90-degree rotation for sideways-feeding printers
   let outputCanvas = canvas

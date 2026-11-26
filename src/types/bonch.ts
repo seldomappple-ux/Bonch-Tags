@@ -59,6 +59,8 @@ export interface PaperConfig {
   heightMm: number
   orientation: 'landscape' | 'portrait'
   printRotate90: boolean
+  offsetXMm: number
+  offsetYMm: number
   connectedGrid: boolean // Seamless shared-border grid (no white gaps)
   marginTopMm: number
   marginRightMm: number
