@@ -90,14 +90,14 @@ export function computeSheetGeometry(
 export function getFontFamilyCss(key: FontFamilyKey): string {
   switch (key) {
     case 'mono':
-      return 'var(--font-mono)'
+      return '"JetBrains Mono", "Cascadia Mono", "Consolas", monospace'
     case 'rounded':
-      return 'var(--font-rounded)'
+      return '"PingFang SC", "Microsoft YaHei UI", "Hiragino Sans GB", sans-serif'
     case 'bold':
       return '"Microsoft YaHei", "PingFang SC", "Heiti SC", sans-serif'
     case 'sans':
     default:
-      return 'var(--font-sans)'
+      return '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif'
   }
 }
 
