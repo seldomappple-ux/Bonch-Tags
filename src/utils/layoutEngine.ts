@@ -63,10 +63,9 @@ export function computeSheetGeometry(
   let rows = 1
 
   if (paper.connectedGrid) {
-    const stepX = Math.max(1, labelW - borderWidthMm)
-    const stepY = Math.max(1, labelH - borderWidthMm)
-    cols = Math.max(1, Math.floor((usableW - borderWidthMm + 0.05) / stepX))
-    rows = Math.max(1, Math.floor((usableH - borderWidthMm + 0.05) / stepY))
+    // Center-to-center pitch is exact labelW x labelH; total grid adds 1 borderWidthMm
+    cols = Math.max(1, Math.floor((usableW - borderWidthMm + 0.05) / labelW))
+    rows = Math.max(1, Math.floor((usableH - borderWidthMm + 0.05) / labelH))
   } else {
     cols = Math.max(1, Math.floor((usableW + paper.gapXMm + 0.05) / (labelW + paper.gapXMm)))
     rows = Math.max(1, Math.floor((usableH + paper.gapYMm + 0.05) / (labelH + paper.gapYMm)))

@@ -77,8 +77,8 @@ export const LabelCard: React.FC<LabelCardProps> = ({
       }}
       className={`group relative select-none bg-white text-black ${!forPrint ? 'cursor-pointer' : ''}`}
       style={{
-        width: `${widthMm}mm`,
-        height: `${heightMm}mm`,
+        width: `${connectedGrid ? widthMm + styleConfig.borderWidthMm : widthMm}mm`,
+        height: `${connectedGrid ? heightMm + styleConfig.borderWidthMm : heightMm}mm`,
         border: `${styleConfig.borderWidthMm}mm solid #000000`,
         borderRadius: `${effectiveRadiusMm}mm`,
         marginLeft: connectedGrid ? `-${styleConfig.borderWidthMm}mm` : undefined,

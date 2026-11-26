@@ -240,8 +240,10 @@ export async function generateExactSheetPdf(params: {
   const dwPx = styleConfig.dividerWidthMm * PX_PER_MM
   const radiusPx = paper.connectedGrid ? 0 : styleConfig.borderRadiusMm * PX_PER_MM
 
-  const stepXMm = paper.connectedGrid ? labelW - styleConfig.borderWidthMm : labelW + paper.gapXMm
-  const stepYMm = paper.connectedGrid ? labelH - styleConfig.borderWidthMm : labelH + paper.gapYMm
+  const stepXMm = paper.connectedGrid ? labelW : labelW + paper.gapXMm
+  const stepYMm = paper.connectedGrid ? labelH : labelH + paper.gapYMm
+  const drawWMm = paper.connectedGrid ? labelW + styleConfig.borderWidthMm : labelW
+  const drawHMm = paper.connectedGrid ? labelH + styleConfig.borderWidthMm : labelH
 
   const fontWeight =
     styleConfig.fontFamily === 'bold'
@@ -263,8 +265,8 @@ export async function generateExactSheetPdf(params: {
 
     const x = xMm * PX_PER_MM
     const y = yMm * PX_PER_MM
-    const w = labelW * PX_PER_MM
-    const h = labelH * PX_PER_MM
+    const w = drawWMm * PX_PER_MM
+    const h = drawHMm * PX_PER_MM
 
     const topH = h * styleConfig.splitRatio
     const bottomH = h - topH
