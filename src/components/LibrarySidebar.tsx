@@ -155,22 +155,25 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
               </button>
             </div>
 
-            {/* Category filter pills */}
-            <div className="flex flex-wrap gap-1 pt-0.5">
-              {partCategories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
-                    activeCategory === cat
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            {/* Clean single-row underline category strip */}
+            <div className="no-scrollbar -mx-3 -mb-3 flex items-center gap-3 overflow-x-auto border-t border-zinc-100 px-3 pt-1.5">
+              {partCategories.map((cat) => {
+                const active = activeCategory === cat
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 border-b-2 pb-1.5 text-[11px] transition ${
+                      active
+                        ? 'border-zinc-900 font-semibold text-zinc-900'
+                        : 'border-transparent font-normal text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                )
+              })}
             </div>
           </>
         ) : (

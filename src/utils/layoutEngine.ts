@@ -111,5 +111,6 @@ export function applyDynamicPrintPageSize(widthMm: number, heightMm: number, rot
     el.id = styleId
     document.head.appendChild(el)
   }
-  el.textContent = `@media print { @page { size: ${outW}mm ${outH}mm; margin: 0mm !important; } }`
+  // Top-level @page without !important so Chromium honors margin: 0 and suppresses date/URL/page headers
+  el.textContent = `@page { size: ${outW}mm ${outH}mm; margin: 0; }`
 }

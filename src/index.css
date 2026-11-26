@@ -34,11 +34,19 @@
   background: #a1a1aa;
 }
 
-@media print {
-  @page {
-    margin: 0 !important;
-  }
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
+@page {
+  margin: 0;
+}
+
+@media print {
   html,
   body,
   #root {
@@ -46,7 +54,7 @@
     padding: 0 !important;
     width: auto !important;
     height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -58,7 +66,9 @@
 
   .print-only-sheet {
     display: block !important;
-    position: relative !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;

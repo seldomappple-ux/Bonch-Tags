@@ -156,22 +156,24 @@ export const LabelCard: React.FC<LabelCardProps> = ({
           color: '#000000',
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            textAlign: 'center',
-            fontFamily: getFontFamilyCss(styleConfig.fontFamily),
-            fontSize: `${fontSizePt}pt`,
-            fontWeight: fontWeightValue,
-            lineHeight: 1.15,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {item.text || (!forPrint ? <span style={{ color: '#d4d4d8' }}>双击改字</span> : '')}
-        </div>
+        {!editing && (
+          <div
+            style={{
+              width: '100%',
+              textAlign: 'center',
+              fontFamily: getFontFamilyCss(styleConfig.fontFamily),
+              fontSize: `${fontSizePt}pt`,
+              fontWeight: fontWeightValue,
+              lineHeight: 1.15,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {item.text || (!forPrint ? <span style={{ color: '#d4d4d8' }}>双击改字</span> : '')}
+          </div>
+        )}
 
-        {/* Inline edit overlay only when actively double-clicked */}
+        {/* Clean opaque inline editor without scrollbars or ghosting */}
         {!forPrint && editing && (
           <textarea
             autoFocus
@@ -183,7 +185,7 @@ export const LabelCard: React.FC<LabelCardProps> = ({
             }}
             onClick={(e) => e.stopPropagation()}
             spellCheck={false}
-            className="no-print absolute inset-0 h-full w-full resize-none border-none bg-blue-50/95 p-[0.3mm] text-center text-black outline-none"
+            className="no-print no-scrollbar absolute inset-0 h-full w-full resize-none overflow-hidden border-none bg-white p-[0.3mm] text-center text-black outline-none"
             style={{
               fontFamily: getFontFamilyCss(styleConfig.fontFamily),
               fontSize: `${fontSizePt}pt`,
